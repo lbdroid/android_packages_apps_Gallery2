@@ -30,6 +30,7 @@ import com.android.gallery3d.common.ApiHelper;
 import com.android.gallery3d.util.SaveVideoFileInfo;
 import com.coremedia.iso.IsoFile;
 import com.coremedia.iso.boxes.TimeToSampleBox;
+import com.googlecode.mp4parser.DataSource;
 import com.googlecode.mp4parser.authoring.Movie;
 import com.googlecode.mp4parser.authoring.Track;
 import com.googlecode.mp4parser.authoring.builder.DefaultMp4Builder;
@@ -83,7 +84,7 @@ public class VideoUtils {
         File dst = dstFileInfo.mFile;
         File src = new File(filePath);
         RandomAccessFile randomAccessFile = new RandomAccessFile(src, "r");
-        Movie movie = MovieCreator.build(randomAccessFile.getChannel());
+        Movie movie = MovieCreator.build((DataSource) randomAccessFile.getChannel());
 
         // remove all tracks we will create new tracks from the old
         List<Track> tracks = movie.getTracks();
@@ -104,7 +105,7 @@ public class VideoUtils {
             dst.createNewFile();
         }
 
-        IsoFile out = new DefaultMp4Builder().build(movie);
+        IsoFile out = (IsoFile) new DefaultMp4Builder().build(movie);
         FileOutputStream fos = new FileOutputStream(dst);
         FileChannel fc = fos.getChannel();
         out.getBox(fc); // This one build up the memory.
@@ -230,7 +231,7 @@ public class VideoUtils {
     private static void trimUsingMp4Parser(File src, File dst, int startMs, int endMs)
             throws FileNotFoundException, IOException {
         RandomAccessFile randomAccessFile = new RandomAccessFile(src, "r");
-        Movie movie = MovieCreator.build(randomAccessFile.getChannel());
+        Movie movie = MovieCreator.build((DataSource) randomAccessFile.getChannel());
 
         // remove all tracks we will create new tracks from the old
         List<Track> tracks = movie.getTracks();
@@ -268,7 +269,7 @@ public class VideoUtils {
             long startSample = -1;
             long endSample = -1;
 
-            for (int i = 0; i < track.getDecodingTimeEntries().size(); i++) {
+            /*TODO FIX!!! for (int i = 0; i < track.getDecodingTimeEntries().size(); i++) {
                 TimeToSampleBox.Entry entry = track.getDecodingTimeEntries().get(i);
                 for (int j = 0; j < entry.getCount(); j++) {
                     // entry.getDelta() is the amount of time the current sample
@@ -290,7 +291,7 @@ public class VideoUtils {
                             / (double) track.getTrackMetaData().getTimescale();
                     currentSample++;
                 }
-            }
+            }*/
             movie.addTrack(new CroppedTrack(track, startSample, endSample));
         }
         writeMovieIntoFile(dst, movie);
@@ -302,7 +303,7 @@ public class VideoUtils {
         double[] timeOfSyncSamples = new double[track.getSyncSamples().length];
         long currentSample = 0;
         double currentTime = 0;
-        for (int i = 0; i < track.getDecodingTimeEntries().size(); i++) {
+        /* TODO: FIX!! for (int i = 0; i < track.getDecodingTimeEntries().size(); i++) {
             TimeToSampleBox.Entry entry = track.getDecodingTimeEntries().get(i);
             for (int j = 0; j < entry.getCount(); j++) {
                 if (Arrays.binarySearch(track.getSyncSamples(), currentSample + 1) >= 0) {
@@ -315,7 +316,7 @@ public class VideoUtils {
                         / (double) track.getTrackMetaData().getTimescale();
                 currentSample++;
             }
-        }
+        }*/
         double previous = 0;
         for (double timeOfSyncSample : timeOfSyncSamples) {
             if (timeOfSyncSample > cutHere) {
