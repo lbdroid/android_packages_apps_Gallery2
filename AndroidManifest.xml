@@ -7,7 +7,7 @@
 
     <original-package android:name="com.android.gallery3d" />
 
-    <uses-sdk android:minSdkVersion="19" android:targetSdkVersion="22" />
+    <uses-sdk android:minSdkVersion="19" android:targetSdkVersion="19" tools:ignore="OldTargetApi"/>
 
 
 
