@@ -75,7 +75,7 @@ public class SaveImage {
     private static final String PREFIX_PANO = "PANO";
     private static final String PREFIX_IMG = "IMG";
     private static final String POSTFIX_JPG = ".jpg";
-    private static final String AUX_DIR_NAME = ".aux";
+    private static final String AUX_DIR_NAME = "original";
 
     private final Context mContext;
     private final Uri mSourceUri;
@@ -87,7 +87,7 @@ public class SaveImage {
     private int mCurrentProcessingStep = 1;
 
     public static final int MAX_PROCESSING_STEPS = 6;
-    public static final String DEFAULT_SAVE_DIRECTORY = "EditedOnlinePhotos";
+    public static final String DEFAULT_SAVE_DIRECTORY = "EditedPhotos";
 
     // In order to support the new edit-save behavior such that user won't see
     // the edited image together with the original image, we are adding a new
@@ -483,7 +483,7 @@ public class SaveImage {
 
         // Make sure there is a .nomedia file in the auxiliary directory, such
         // that MediaScanner will not report those files under this directory.
-        File noMedia = new File(auxDiretory, ".nomedia");
+        /*File noMedia = new File(auxDiretory, ".nomedia");
         if (!noMedia.exists()) {
             try {
                 noMedia.createNewFile();
@@ -491,7 +491,7 @@ public class SaveImage {
                 Log.e(LOGTAG, "Can't create the nomedia");
                 return srcUri;
             }
-        }
+        }*/
         // We are using the destination file name such that photos sitting in
         // the auxiliary directory are matching the parent directory.
         File newSrcFile = new File(auxDiretory, dstFile.getName());
