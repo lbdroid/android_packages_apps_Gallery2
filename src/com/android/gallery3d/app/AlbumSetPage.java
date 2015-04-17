@@ -44,7 +44,6 @@ import com.android.gallery3d.data.Path;
 import com.android.gallery3d.glrenderer.FadeTexture;
 import com.android.gallery3d.glrenderer.GLCanvas;
 import com.android.gallery3d.picasasource.PicasaSource;
-import com.android.gallery3d.settings.GallerySettings;
 import com.android.gallery3d.ui.ActionModeHandler;
 import com.android.gallery3d.ui.ActionModeHandler.ActionModeListener;
 import com.android.gallery3d.ui.AlbumSetSlotRenderer;
@@ -612,10 +611,6 @@ public class AlbumSetPage extends ActivityState implements
             }
             case R.id.action_sync_picasa_albums: {
                 PicasaSource.requestSync(activity);
-                return true;
-            }
-            case R.id.action_settings: {
-                activity.startActivity(new Intent(activity, GallerySettings.class));
                 return true;
             }
             default:
