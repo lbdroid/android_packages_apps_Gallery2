@@ -105,6 +105,9 @@ public class LocalAlbumSet extends MediaSet
         public ArrayList<MediaSet> run(JobContext jc) {
             // Note: it will be faster if we only select media_type and bucket_id.
             //       need to test the performance if that is worth
+        	
+        	//TODO: The following line is where the gallery loads all the different gallery "buckets".
+        	// a bucket is a collection of media items.
             BucketEntry[] entries = BucketHelper.loadBucketEntries(
                     jc, mApplication.getContentResolver(), mType);
 
@@ -124,6 +127,12 @@ public class LocalAlbumSet extends MediaSet
 
             ArrayList<MediaSet> albums = new ArrayList<MediaSet>();
             DataManager dataManager = mApplication.getDataManager();
+            
+            //TODO: the following loop creates albums from buckets, and loads them into the
+            //ArrayList<MediaSet> albums. What we can do here, is create a new "filesystem"
+            //album, and add it along with the others.
+            
+            albums.add(getFilesystemAlbum(dataManager, mType, mPath));
             for (BucketEntry entry : entries) {
                 MediaSet album = getLocalAlbum(dataManager,
                         mType, mPath, entry.bucketId, entry.bucketName);
@@ -149,6 +158,29 @@ public class LocalAlbumSet extends MediaSet
                     return new LocalMergeAlbum(path, comp, new MediaSet[] {
                             getLocalAlbum(manager, MEDIA_TYPE_IMAGE, PATH_IMAGE, id, name),
                             getLocalAlbum(manager, MEDIA_TYPE_VIDEO, PATH_VIDEO, id, name)}, id);
+            }
+            throw new IllegalArgumentException(String.valueOf(type));
+        }
+    }
+    
+    private MediaSet getFilesystemAlbum(
+            DataManager manager, int type, Path parent) {
+        synchronized (DataManager.LOCK) {
+            Path path = Path.fromString("/sdcard/Download/");
+            MediaObject object = manager.peekMediaObject(path);
+            if (object != null) return (MediaSet) object;
+            switch (type) {
+            	case MEDIA_TYPE_ALL:
+            	case MEDIA_TYPE_VIDEO:
+                case MEDIA_TYPE_IMAGE:
+                    return new FilesystemAlbum(path, mApplication, "Filesystem");
+                /*case MEDIA_TYPE_VIDEO:
+                    return new FilesystemAlbum(path, mApplication, false);
+                case MEDIA_TYPE_ALL:
+                    Comparator<MediaItem> comp = DataManager.sDateTakenComparator;
+                    return new LocalMergeAlbum(path, comp, new MediaSet[] {
+                            getLocalAlbum(manager, MEDIA_TYPE_IMAGE, PATH_IMAGE, id, name),
+                            getLocalAlbum(manager, MEDIA_TYPE_VIDEO, PATH_VIDEO, id, name)}, id);*/
             }
             throw new IllegalArgumentException(String.valueOf(type));
         }

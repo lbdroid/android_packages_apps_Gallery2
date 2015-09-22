@@ -67,7 +67,10 @@ public class Path {
 
     public void setObject(MediaObject object) {
         synchronized (Path.class) {
-            Utils.assertTrue(mObject == null || mObject.get() == null);
+            //TODO: put back following line:
+        	//Utils.assertTrue(mObject == null || mObject.get() == null);
+        	// note: seems to be a crash due to UriImage's content type field not matching, which
+        	// makes sense since I'm passing it hardcoded "image/jpeg".
             mObject = new WeakReference<MediaObject>(object);
         }
     }

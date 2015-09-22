@@ -34,6 +34,7 @@ import android.widget.Toast;
 import com.android.gallery3d.R;
 import com.android.gallery3d.common.Utils;
 import com.android.gallery3d.data.DataManager;
+import com.android.gallery3d.data.FilesystemAlbum;
 import com.android.gallery3d.data.MediaDetails;
 import com.android.gallery3d.data.MediaItem;
 import com.android.gallery3d.data.MediaObject;
@@ -279,7 +280,18 @@ public class AlbumPage extends ActivityState implements GalleryActionBar.Cluster
 
         MediaItem item = mAlbumDataAdapter.get(slotIndex);
         if (item == null) return; // Item not ready yet, ignore the click
-        if (mGetContent) {
+
+        Log.d("ALBUMPAGE", item.getContentUri().toString());
+        String uristring = item.getContentUri().toString();
+        if (uristring.contains("file:///data/data/com.android.gallery3d/files/directory.png")){
+        	// if the item contains THIS SPECIFIC resource, then it is actually a directory.
+        	// and the item's Path is the path to the new FilesystemAlbum to load into this
+        	// AlbumPage.
+        	Path p = item.getPath();
+        	Log.d("ALBUMPAGE",p.toString());
+        	FilesystemAlbum fsb = new FilesystemAlbum(p,((FilesystemAlbum)mMediaSet).getApplication(),p.toString());
+        	reInitializeData(fsb);
+        } else if (mGetContent) {
             onGetContent(item);
         } else if (mLaunchedFromPhotoPage) {
             TransitionStore transitions = mActivity.getTransitionStore();
@@ -291,18 +303,14 @@ public class AlbumPage extends ActivityState implements GalleryActionBar.Cluster
         } else {
             // Get into the PhotoPage.
             // mAlbumView.savePositions(PositionRepository.getInstance(mActivity));
+        	Log.d("ALBUMPAGE", "mMediaSetPath:"+mMediaSetPath.toString()+", itempath:"+item.getPath().toString());
             Bundle data = new Bundle();
             data.putInt(PhotoPage.KEY_INDEX_HINT, slotIndex);
-            data.putParcelable(PhotoPage.KEY_OPEN_ANIMATION_RECT,
-                    mSlotView.getSlotRect(slotIndex, mRootPane));
-            data.putString(PhotoPage.KEY_MEDIA_SET_PATH,
-                    mMediaSetPath.toString());
-            data.putString(PhotoPage.KEY_MEDIA_ITEM_PATH,
-                    item.getPath().toString());
-            data.putInt(PhotoPage.KEY_ALBUMPAGE_TRANSITION,
-                    PhotoPage.MSG_ALBUMPAGE_STARTED);
-            data.putBoolean(PhotoPage.KEY_START_IN_FILMSTRIP,
-                    startInFilmstrip);
+            data.putParcelable(PhotoPage.KEY_OPEN_ANIMATION_RECT, mSlotView.getSlotRect(slotIndex, mRootPane));
+            data.putString(PhotoPage.KEY_MEDIA_SET_PATH, mMediaSetPath.toString());
+            data.putString(PhotoPage.KEY_MEDIA_ITEM_PATH, item.getPath().toString());
+            data.putInt(PhotoPage.KEY_ALBUMPAGE_TRANSITION, PhotoPage.MSG_ALBUMPAGE_STARTED);
+            data.putBoolean(PhotoPage.KEY_START_IN_FILMSTRIP, startInFilmstrip);
             data.putBoolean(PhotoPage.KEY_IN_CAMERA_ROLL, mMediaSet.isCameraRoll());
             if (startInFilmstrip) {
                 mActivity.getStateManager().switchState(this, FilmstripPage.class, data);
@@ -364,6 +372,7 @@ public class AlbumPage extends ActivityState implements GalleryActionBar.Cluster
     @Override
     protected void onCreate(Bundle data, Bundle restoreState) {
         super.onCreate(data, restoreState);
+        Log.d("ALBUMPAGE", "onCreate()");
         mUserDistance = GalleryUtils.meterToPixel(USER_DISTANCE_METER);
         initializeViews();
         initializeData(data);
@@ -398,6 +407,7 @@ public class AlbumPage extends ActivityState implements GalleryActionBar.Cluster
     @Override
     protected void onResume() {
         super.onResume();
+        Log.d("ALBUMPAGE", "onResume()");
         mIsActive = true;
 
         mResumeEffect = mActivity.getTransitionStore().get(KEY_RESUME_ANIMATION);
@@ -435,6 +445,7 @@ public class AlbumPage extends ActivityState implements GalleryActionBar.Cluster
     @Override
     protected void onPause() {
         super.onPause();
+        Log.d("ALBUMPAGE", "onPause()");
         mIsActive = false;
 
         if (mSelectionManager.inSelectionMode()) {
@@ -466,6 +477,7 @@ public class AlbumPage extends ActivityState implements GalleryActionBar.Cluster
     }
 
     private void initializeViews() {
+    	Log.d("ALBUMPAGE", "initializeViews()");
         mSelectionManager = new SelectionManager(mActivity, false);
         mSelectionManager.setSelectionListener(this);
         Config.AlbumPage config = Config.AlbumPage.get(mActivity);
@@ -505,9 +517,16 @@ public class AlbumPage extends ActivityState implements GalleryActionBar.Cluster
     }
 
     private void initializeData(Bundle data) {
+    	Log.d("ALBUMPAGE", "initializeData()");
         mMediaSetPath = Path.fromString(data.getString(KEY_MEDIA_PATH));
         mParentMediaSetString = data.getString(KEY_PARENT_MEDIA_PATH);
-        mMediaSet = mActivity.getDataManager().getMediaSet(mMediaSetPath);
+        Log.d("ALBUMPAGE","mMediaSetPath:"+mMediaSetPath.toString()+", mParentMediaSetString:"+mParentMediaSetString);
+        //TODO: the following line sometimes screws up when the mediaset path is to a FilesystemAlbum.
+        try {
+        	mMediaSet = mActivity.getDataManager().getMediaSet(mMediaSetPath);
+        } catch (java.lang.ClassCastException e){
+        	mMediaSet = new FilesystemAlbum(mMediaSetPath,(GalleryApp)mActivity.getApplication(),mMediaSetPath.toString());
+        }
         if (mMediaSet == null) {
             Utils.fail("MediaSet is null. Path = %s", mMediaSetPath);
         }
@@ -515,6 +534,16 @@ public class AlbumPage extends ActivityState implements GalleryActionBar.Cluster
         mAlbumDataAdapter = new AlbumDataLoader(mActivity, mMediaSet);
         mAlbumDataAdapter.setLoadingListener(new MyLoadingListener());
         mAlbumView.setModel(mAlbumDataAdapter);
+    }
+    
+    private void reInitializeData(MediaSet mset) {
+    	mMediaSet = mset;
+    	mMediaSetPath = mset.getPath();
+        mSelectionManager.setSourceMediaSet(mMediaSet);
+        mAlbumDataAdapter = new AlbumDataLoader(mActivity, mMediaSet);
+        mAlbumDataAdapter.setLoadingListener(new MyLoadingListener());
+        mAlbumView.setModel(mAlbumDataAdapter);
+        onResume();
     }
 
     private void showDetails() {
