@@ -128,9 +128,13 @@ public class FilesystemAlbum extends MediaSet {
     		for (int i = start; i<start+count && i<mFileList.length; i++){
    				Path newPath = Path.fromString(mFileList[i].getAbsolutePath());
        			String mime = MimeTypeMap.getSingleton().getMimeTypeFromExtension(mFileList[i].getAbsolutePath().substring(mFileList[i].getAbsolutePath().lastIndexOf(".")+1).toLowerCase());
+//       			if (mFileList[i].isDirectory()){
+//       				list.add(new UriImage(mApplication, newPath, Uri.parse("file:///data/data/com.android.gallery3d/files/directory.png"), "image/png"));
+//       			} else list.add(new UriImage(mApplication, newPath, Uri.fromFile(mFileList[i]), mime));
        			if (mFileList[i].isDirectory()){
-       				list.add(new UriImage(mApplication, newPath, Uri.parse("file:///data/data/com.android.gallery3d/files/directory.png"), "image/png"));
-       			} else list.add(new UriImage(mApplication, newPath, Uri.fromFile(mFileList[i]), mime));
+       				newPath = Path.fromString("/data/data/com.android.gallery3d/files/directory.png");
+       				list.add(new FilesystemImage(mApplication, newPath, "image/png", mFileList[i].getAbsolutePath()));
+       			} else list.add(new FilesystemImage(mApplication, newPath, mime, null));
     		}
     		return list;
     	} else return null;

@@ -35,6 +35,7 @@ import com.android.gallery3d.R;
 import com.android.gallery3d.common.Utils;
 import com.android.gallery3d.data.DataManager;
 import com.android.gallery3d.data.FilesystemAlbum;
+import com.android.gallery3d.data.FilesystemImage;
 import com.android.gallery3d.data.MediaDetails;
 import com.android.gallery3d.data.MediaItem;
 import com.android.gallery3d.data.MediaObject;
@@ -282,15 +283,19 @@ public class AlbumPage extends ActivityState implements GalleryActionBar.Cluster
         if (item == null) return; // Item not ready yet, ignore the click
 
         Log.d("ALBUMPAGE", item.getContentUri().toString());
-        String uristring = item.getContentUri().toString();
-        if (uristring.contains("file:///data/data/com.android.gallery3d/files/directory.png")){
-        	// if the item contains THIS SPECIFIC resource, then it is actually a directory.
-        	// and the item's Path is the path to the new FilesystemAlbum to load into this
-        	// AlbumPage.
-        	Path p = item.getPath();
-        	Log.d("ALBUMPAGE",p.toString());
-        	FilesystemAlbum fsb = new FilesystemAlbum(p,((FilesystemAlbum)mMediaSet).getApplication(),p.toString());
-        	reInitializeData(fsb);
+        boolean skip = false;
+        try {
+        	FilesystemImage fsi = (FilesystemImage) item;
+        	if (fsi.isDir()){
+            	Path p = Path.fromString(fsi.getDirectoryPath());
+            	FilesystemAlbum fsb = new FilesystemAlbum(p,((FilesystemAlbum)mMediaSet).getApplication(),p.toString());
+            	skip = true;
+            	reInitializeData(fsb);
+        	}
+        } catch (Exception e){}
+
+        if (skip){
+        	// do nothing
         } else if (mGetContent) {
             onGetContent(item);
         } else if (mLaunchedFromPhotoPage) {
