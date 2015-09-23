@@ -95,11 +95,13 @@ public class FilesystemImage extends FilesystemMediaItem {
 
     public int rotation;
     private String directoryPath = null;
+    private String directoryLabel;
 
     private PanoramaMetadataSupport mPanoramaMetadata = new PanoramaMetadataSupport(this);
 
-    public FilesystemImage(GalleryApp application, Path path, String mimetype, String directoryPath) {
+    public FilesystemImage(GalleryApp application, Path path, String mimetype, String directoryPath, String label) {
         super(path, nextVersionNumber());
+        directoryLabel = label;
         mApplication = application;
         File f = new File(path.toString());
         uri = Uri.fromFile(f);
@@ -113,6 +115,7 @@ public class FilesystemImage extends FilesystemMediaItem {
     
     public boolean isDir(){ return directoryPath != null; }
     public String getDirectoryPath(){ return directoryPath; }
+    public String getDirectoryLabel(){ return directoryLabel; }
 
     @Override
     public Job<Bitmap> requestImage(int type) {

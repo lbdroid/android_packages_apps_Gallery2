@@ -22,12 +22,18 @@ import android.os.Message;
 import com.android.gallery3d.app.AbstractGalleryActivity;
 import com.android.gallery3d.app.AlbumDataLoader;
 import com.android.gallery3d.common.Utils;
+import com.android.gallery3d.data.DataSourceType;
+import com.android.gallery3d.data.FilesystemAlbum;
+import com.android.gallery3d.data.FilesystemImage;
 import com.android.gallery3d.data.MediaItem;
 import com.android.gallery3d.data.MediaObject;
 import com.android.gallery3d.data.MediaObject.PanoramaSupportCallback;
 import com.android.gallery3d.data.Path;
+import com.android.gallery3d.glrenderer.BitmapTexture;
 import com.android.gallery3d.glrenderer.Texture;
+import com.android.gallery3d.glrenderer.TextureUploader;
 import com.android.gallery3d.glrenderer.TiledTexture;
+import com.android.gallery3d.ui.AlbumSetSlidingWindow.AlbumSetEntry;
 import com.android.gallery3d.util.Future;
 import com.android.gallery3d.util.FutureListener;
 import com.android.gallery3d.util.JobLimiter;
@@ -37,6 +43,7 @@ public class AlbumSlidingWindow implements AlbumDataLoader.DataListener {
     private static final String TAG = "AlbumSlidingWindow";
 
     private static final int MSG_UPDATE_ENTRY = 0;
+    private static final int MSG_UPDATE_LABEL = 1;
     private static final int JOB_LIMIT = 2;
 
     public static interface Listener {
@@ -44,16 +51,21 @@ public class AlbumSlidingWindow implements AlbumDataLoader.DataListener {
         public void onContentChanged();
     }
 
+    private int mSlotWidth;
+    
     public static class AlbumEntry {
         public MediaItem item;
         public Path path;
+        public String title;
         public boolean isPanorama;
         public int rotation;
         public int mediaType;
         public boolean isWaitDisplayed;
         public TiledTexture bitmapTexture;
+        public BitmapTexture labelTexture;
         public Texture content;
         private BitmapLoader contentLoader;
+        private BitmapLoader labelLoader;
         private PanoSupportListener mPanoSupportListener;
     }
 
@@ -62,6 +74,8 @@ public class AlbumSlidingWindow implements AlbumDataLoader.DataListener {
     private final SynchronizedHandler mHandler;
     private final JobLimiter mThreadPool;
     private final TiledTexture.Uploader mTileUploader;
+    private final DirectoryLabelMaker mLabelMaker;
+    private final TextureUploader mLabelUploader;
 
     private int mSize;
 
@@ -89,22 +103,25 @@ public class AlbumSlidingWindow implements AlbumDataLoader.DataListener {
     }
 
     public AlbumSlidingWindow(AbstractGalleryActivity activity,
-            AlbumDataLoader source, int cacheSize) {
+            AlbumDataLoader source, AlbumSlotRenderer.LabelSpec labelSpec, int cacheSize) {
         source.setDataListener(this);
         mSource = source;
         mData = new AlbumEntry[cacheSize];
         mSize = source.size();
+        mLabelMaker = new DirectoryLabelMaker(activity.getAndroidContext(), labelSpec);
 
         mHandler = new SynchronizedHandler(activity.getGLRoot()) {
             @Override
             public void handleMessage(Message message) {
-                Utils.assertTrue(message.what == MSG_UPDATE_ENTRY);
-                ((ThumbnailLoader) message.obj).updateEntry();
+                Utils.assertTrue(message.what == MSG_UPDATE_ENTRY || message.what == MSG_UPDATE_LABEL);
+                if (message.what == MSG_UPDATE_ENTRY) ((ThumbnailLoader) message.obj).updateEntry();
+                else ((AlbumLabelLoader) message.obj).updateEntry();
             }
         };
 
         mThreadPool = new JobLimiter(activity.getThreadPool(), JOB_LIMIT);
         mTileUploader = new TiledTexture.Uploader(activity.getGLRoot());
+        mLabelUploader = new TextureUploader(activity.getGLRoot());
     }
 
     public void setListener(Listener listener) {
@@ -233,6 +250,7 @@ public class AlbumSlidingWindow implements AlbumDataLoader.DataListener {
         entry.item.getPanoramaSupport(entry.mPanoSupportListener);
 
         entry.contentLoader.startLoad();
+        entry.labelLoader.startLoad();
         return entry.contentLoader.isRequestInProgress();
     }
 
@@ -270,6 +288,14 @@ public class AlbumSlidingWindow implements AlbumDataLoader.DataListener {
         entry.path = (item == null) ? null : item.getPath();
         entry.rotation = (item == null) ? 0 : item.getRotation();
         entry.contentLoader = new ThumbnailLoader(slotIndex, entry.item);
+        String label = (item == null) ? "" : item.getPath().toString();
+        try {
+        	FilesystemImage fsi = (FilesystemImage) item;
+        	if (fsi.isDir()){
+            	label=fsi.getDirectoryLabel();
+        	}
+        } catch (Exception e){}
+        entry.labelLoader = new AlbumLabelLoader(slotIndex, label, 0, DataSourceType.TYPE_LOCAL);
         mData[slotIndex % mData.length] = entry;
     }
 
@@ -322,6 +348,51 @@ public class AlbumSlidingWindow implements AlbumDataLoader.DataListener {
             }
         }
     }
+    
+    private class AlbumLabelLoader extends BitmapLoader {
+        private final int mSlotIndex;
+        private final String mTitle;
+        private final int mTotalCount;
+        private final int mSourceType;
+
+        public AlbumLabelLoader(
+                int slotIndex, String title, int totalCount, int sourceType) {
+            mSlotIndex = slotIndex;
+            mTitle = title;
+            mTotalCount = totalCount;
+            mSourceType = sourceType;
+        }
+
+        @Override
+        protected Future<Bitmap> submitBitmapTask(FutureListener<Bitmap> l) {
+            return mThreadPool.submit(mLabelMaker.requestLabel(
+                    mTitle, String.valueOf(mTotalCount), mSourceType), l);
+        }
+
+        @Override
+        protected void onLoadComplete(Bitmap bitmap) {
+            mHandler.obtainMessage(MSG_UPDATE_LABEL, this).sendToTarget();
+        }
+
+        public void updateEntry() {
+            Bitmap bitmap = getBitmap();
+            if (bitmap == null) return; // Error or recycled
+
+            AlbumEntry entry = mData[mSlotIndex % mData.length];
+            BitmapTexture texture = new BitmapTexture(bitmap);
+            texture.setOpaque(false);
+            entry.labelTexture = texture;
+
+            if (isActiveSlot(mSlotIndex)) {
+                mLabelUploader.addFgTexture(texture);
+                --mActiveRequestCount;
+                if (mActiveRequestCount == 0) requestNonactiveImages();
+                if (mListener != null) mListener.onContentChanged();
+            } else {
+                mLabelUploader.addBgTexture(texture);
+            }
+        }
+    }
 
     @Override
     public void onSizeChanged(int size) {
@@ -361,5 +432,30 @@ public class AlbumSlidingWindow implements AlbumDataLoader.DataListener {
         for (int i = mContentStart, n = mContentEnd; i < n; ++i) {
             freeSlotContent(i);
         }
+    }
+    
+    public void onSlotSizeChanged(int width, int height) {
+        if (mSlotWidth == width) return;
+
+        mSlotWidth = width;
+        //mLoadingLabel = null;
+        mLabelMaker.setLabelWidth(mSlotWidth);
+
+        if (!mIsActive) return;
+
+        for (int i = mContentStart, n = mContentEnd; i < n; ++i) {
+            AlbumEntry entry = mData[i % mData.length];
+            if (entry.labelLoader != null) {
+                entry.labelLoader.recycle();
+                entry.labelLoader = null;
+                entry.labelTexture = null;
+            }
+            /*if (entry.album != null) {
+                entry.labelLoader = new AlbumLabelLoader(i,
+                        entry.title, entry.totalCount, entry.sourceType);
+            }*/
+        }
+        updateAllImageRequests();
+        updateTextureUploadQueue();
     }
 }

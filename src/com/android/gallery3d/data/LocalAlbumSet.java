@@ -106,8 +106,6 @@ public class LocalAlbumSet extends MediaSet
             // Note: it will be faster if we only select media_type and bucket_id.
             //       need to test the performance if that is worth
         	
-        	//TODO: The following line is where the gallery loads all the different gallery "buckets".
-        	// a bucket is a collection of media items.
             BucketEntry[] entries = BucketHelper.loadBucketEntries(
                     jc, mApplication.getContentResolver(), mType);
 
@@ -127,11 +125,7 @@ public class LocalAlbumSet extends MediaSet
 
             ArrayList<MediaSet> albums = new ArrayList<MediaSet>();
             DataManager dataManager = mApplication.getDataManager();
-            
-            //TODO: the following loop creates albums from buckets, and loads them into the
-            //ArrayList<MediaSet> albums. What we can do here, is create a new "filesystem"
-            //album, and add it along with the others.
-            
+
             albums.add(getFilesystemAlbum(dataManager, mType, mPath));
             for (BucketEntry entry : entries) {
                 MediaSet album = getLocalAlbum(dataManager,
@@ -166,7 +160,7 @@ public class LocalAlbumSet extends MediaSet
     private MediaSet getFilesystemAlbum(
             DataManager manager, int type, Path parent) {
         synchronized (DataManager.LOCK) {
-            Path path = Path.fromString("/sdcard/Download/");
+            Path path = Path.fromString("/");
             MediaObject object = manager.peekMediaObject(path);
             if (object != null) return (MediaSet) object;
             switch (type) {

@@ -86,6 +86,7 @@ public class AlbumPage extends ActivityState implements GalleryActionBar.Cluster
 
     private boolean mIsActive = false;
     private AlbumSlotRenderer mAlbumView;
+    private Config.AlbumPage mConfig;
     private Path mMediaSetPath;
     private String mParentMediaSetString;
     private SlotView mSlotView;
@@ -487,7 +488,8 @@ public class AlbumPage extends ActivityState implements GalleryActionBar.Cluster
         mSelectionManager.setSelectionListener(this);
         Config.AlbumPage config = Config.AlbumPage.get(mActivity);
         mSlotView = new SlotView(mActivity, config.slotViewSpec);
-        mAlbumView = new AlbumSlotRenderer(mActivity, mSlotView,
+        mConfig = Config.AlbumPage.get(mActivity);
+        mAlbumView = new AlbumSlotRenderer(mActivity, mSlotView, mConfig.labelSpec,
                 mSelectionManager, config.placeholderColor);
         mSlotView.setSlotRenderer(mAlbumView);
         mRootPane.addComponent(mSlotView);
@@ -526,7 +528,6 @@ public class AlbumPage extends ActivityState implements GalleryActionBar.Cluster
         mMediaSetPath = Path.fromString(data.getString(KEY_MEDIA_PATH));
         mParentMediaSetString = data.getString(KEY_PARENT_MEDIA_PATH);
         Log.d("ALBUMPAGE","mMediaSetPath:"+mMediaSetPath.toString()+", mParentMediaSetString:"+mParentMediaSetString);
-        //TODO: the following line sometimes screws up when the mediaset path is to a FilesystemAlbum.
         try {
         	mMediaSet = mActivity.getDataManager().getMediaSet(mMediaSetPath);
         } catch (java.lang.ClassCastException e){

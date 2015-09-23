@@ -192,9 +192,9 @@ public class Path {
         synchronized (Path.class) {
             Path current = this;
             if (current == sRoot) {
-                throw new IllegalStateException();
+                //throw new IllegalStateException();
             }
-            while (current.mParent != sRoot) {
+            while (current != sRoot && current.mParent != sRoot) {
                 current = current.mParent;
             }
             return current;

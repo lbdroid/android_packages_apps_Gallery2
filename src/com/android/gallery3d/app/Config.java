@@ -21,6 +21,7 @@ import android.content.res.Resources;
 
 import com.android.gallery3d.R;
 import com.android.gallery3d.ui.AlbumSetSlotRenderer;
+import com.android.gallery3d.ui.AlbumSlotRenderer;
 import com.android.gallery3d.ui.SlotView;
 
 final class Config {
@@ -82,6 +83,7 @@ final class Config {
         private static AlbumPage sInstance;
 
         public SlotView.Spec slotViewSpec;
+        public AlbumSlotRenderer.LabelSpec labelSpec;
         public int placeholderColor;
 
         public static synchronized AlbumPage get(Context context) {
@@ -100,6 +102,28 @@ final class Config {
             slotViewSpec.rowsLand = r.getInteger(R.integer.album_rows_land);
             slotViewSpec.rowsPort = r.getInteger(R.integer.album_rows_port);
             slotViewSpec.slotGap = r.getDimensionPixelSize(R.dimen.album_slot_gap);
+            
+            labelSpec = new AlbumSlotRenderer.LabelSpec();
+            labelSpec.labelBackgroundHeight = r.getDimensionPixelSize(
+                    R.dimen.albumset_label_background_height);
+            labelSpec.titleOffset = r.getDimensionPixelSize(
+                    R.dimen.albumset_title_offset);
+            labelSpec.countOffset = r.getDimensionPixelSize(
+                    R.dimen.albumset_count_offset);
+            labelSpec.titleFontSize = r.getDimensionPixelSize(
+                    R.dimen.albumset_title_font_size);
+            labelSpec.countFontSize = r.getDimensionPixelSize(
+                    R.dimen.albumset_count_font_size);
+            labelSpec.leftMargin = r.getDimensionPixelSize(
+                    R.dimen.albumset_left_margin);
+            labelSpec.titleRightMargin = r.getDimensionPixelSize(
+                    R.dimen.albumset_title_right_margin);
+            labelSpec.iconSize = r.getDimensionPixelSize(
+                    R.dimen.albumset_icon_size);
+            labelSpec.backgroundColor = r.getColor(
+                    R.color.albumset_label_background);
+            labelSpec.titleColor = r.getColor(R.color.albumset_label_title);
+            labelSpec.countColor = r.getColor(R.color.albumset_label_count);
         }
     }
 

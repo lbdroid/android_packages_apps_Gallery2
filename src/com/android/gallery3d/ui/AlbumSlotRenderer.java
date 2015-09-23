@@ -18,6 +18,7 @@ package com.android.gallery3d.ui;
 
 import com.android.gallery3d.app.AbstractGalleryActivity;
 import com.android.gallery3d.app.AlbumDataLoader;
+import com.android.gallery3d.data.FilesystemImage;
 import com.android.gallery3d.data.MediaObject;
 import com.android.gallery3d.data.Path;
 import com.android.gallery3d.glrenderer.ColorTexture;
@@ -25,6 +26,10 @@ import com.android.gallery3d.glrenderer.FadeInTexture;
 import com.android.gallery3d.glrenderer.GLCanvas;
 import com.android.gallery3d.glrenderer.Texture;
 import com.android.gallery3d.glrenderer.TiledTexture;
+import com.android.gallery3d.glrenderer.UploadedTexture;
+import com.android.gallery3d.ui.AlbumSetSlidingWindow.AlbumSetEntry;
+import com.android.gallery3d.ui.AlbumSetSlotRenderer.LabelSpec;
+import com.android.gallery3d.ui.AlbumSlidingWindow.AlbumEntry;
 
 public class AlbumSlotRenderer extends AbstractSlotRenderer {
     @SuppressWarnings("unused")
@@ -42,6 +47,7 @@ public class AlbumSlotRenderer extends AbstractSlotRenderer {
     private final ColorTexture mWaitLoadingTexture;
     private final SlotView mSlotView;
     private final SelectionManager mSelectionManager;
+    protected final LabelSpec mLabelSpec;
 
     private int mPressedIndex = -1;
     private boolean mAnimatePressedUp;
@@ -49,12 +55,28 @@ public class AlbumSlotRenderer extends AbstractSlotRenderer {
     private boolean mInSelectionMode;
 
     private SlotFilter mSlotFilter;
+    
+    public static class LabelSpec {
+        public int labelBackgroundHeight;
+        public int titleOffset;
+        public int countOffset;
+        public int titleFontSize;
+        public int countFontSize;
+        public int leftMargin;
+        public int iconSize;
+        public int titleRightMargin;
+        public int backgroundColor;
+        public int titleColor;
+        public int countColor;
+        public int borderSize;
+    }
 
-    public AlbumSlotRenderer(AbstractGalleryActivity activity, SlotView slotView,
+    public AlbumSlotRenderer(AbstractGalleryActivity activity, SlotView slotView, LabelSpec labelSpec,
             SelectionManager selectionManager, int placeholderColor) {
         super(activity);
         mActivity = activity;
         mSlotView = slotView;
+        mLabelSpec = labelSpec;
         mSelectionManager = selectionManager;
         mPlaceholderColor = placeholderColor;
 
@@ -87,12 +109,19 @@ public class AlbumSlotRenderer extends AbstractSlotRenderer {
             mDataWindow = null;
         }
         if (model != null) {
-            mDataWindow = new AlbumSlidingWindow(mActivity, model, CACHE_SIZE);
+            mDataWindow = new AlbumSlidingWindow(mActivity, model, mLabelSpec, CACHE_SIZE);
             mDataWindow.setListener(new MyDataModelListener());
             mSlotView.setSlotCount(model.size());
         }
     }
 
+    private static Texture checkLabelTexture(Texture texture) {
+        return ((texture instanceof UploadedTexture)
+                && ((UploadedTexture) texture).isUploading())
+                ? null
+                : texture;
+    }
+    
     private static Texture checkTexture(Texture texture) {
         return (texture instanceof TiledTexture)
                 && !((TiledTexture) texture).isReady()
@@ -130,7 +159,14 @@ public class AlbumSlotRenderer extends AbstractSlotRenderer {
         if (entry.isPanorama) {
             drawPanoramaIcon(canvas, width, height);
         }
-
+        
+        try {
+        	FilesystemImage fsi = (FilesystemImage) entry.item;
+        	if (fsi.isDir()){
+        		renderRequestFlags |= renderLabel(canvas, entry, width, height);
+        	}
+        } catch (Exception e){}
+        
         renderRequestFlags |= renderOverlay(canvas, index, entry, width, height);
 
         return renderRequestFlags;
@@ -178,6 +214,19 @@ public class AlbumSlotRenderer extends AbstractSlotRenderer {
         mDataWindow.pause();
     }
 
+    protected int renderLabel(
+            GLCanvas canvas, AlbumEntry entry, int width, int height) {
+        Texture content = checkLabelTexture(entry.labelTexture);
+        if (content == null) {
+            content = mWaitLoadingTexture;
+        }
+        int b = AlbumLabelMaker.getBorderSize();
+        int h = mLabelSpec.labelBackgroundHeight;
+        content.draw(canvas, -b, height - h + b, width + b + b, h);
+
+        return 0;
+    }
+    
     @Override
     public void prepareDrawing() {
         mInSelectionMode = mSelectionManager.inSelectionMode();
@@ -192,7 +241,9 @@ public class AlbumSlotRenderer extends AbstractSlotRenderer {
 
     @Override
     public void onSlotSizeChanged(int width, int height) {
-        // Do nothing
+        if (mDataWindow != null) {
+            mDataWindow.onSlotSizeChanged(width, height);
+        }
     }
 
     public void setSlotFilter(SlotFilter slotFilter) {

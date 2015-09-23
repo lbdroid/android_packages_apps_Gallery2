@@ -133,7 +133,7 @@ public class FilterUtils {
         }
 
         // update current selection
-        if (segments[0].equals("cluster")) {
+        if (segments.length > 0 && segments[0].equals("cluster")) {
             // if this is a clustered album, set underCluster to true.
             if (segments.length == 4) {
                 underCluster = true;

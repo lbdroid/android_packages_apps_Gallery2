@@ -19,6 +19,7 @@ public class FilesystemAlbum extends MediaSet {
     private final GalleryApp mApplication;
     private final String mName;
     private final File[] mFileList;
+    private final File currentPath;
     
     public FilesystemAlbum(Path path, GalleryApp application, String name){
     	super(path, nextVersionNumber());
@@ -49,14 +50,18 @@ public class FilesystemAlbum extends MediaSet {
             }
      	}
     	
-    	File f = new File(path.toString());
+    	Log.d("FILESYSTEMALBUM","PATH:"+path.toString());
+    	String pathString = path.toString();
+    	if (!pathString.startsWith("/")) pathString = "/";
+    	File f = new File(pathString);
+    	currentPath = f;
     	File[] files = f.listFiles();
     	ArrayList<File> filearr = new ArrayList<File>();
     	
-    	// add parent directory
+    	// add parent directory, if not root.
     	File parentorself = f.getParentFile();
-    	if (parentorself == null) parentorself = f;
-    	filearr.add(parentorself);
+    	if (parentorself != null)
+    		filearr.add(parentorself);
     	
     	// first iteration through the list, add all the directories (at the beginning).
     	for (int i=0; i<files.length; i++){
@@ -94,31 +99,6 @@ public class FilesystemAlbum extends MediaSet {
         return Uri.parse("file://"+mName);
     }
     
-// Apparently, it isn't smart enough to browse through submediasets, but instead wants to add them all together into a supermess.
-// TODO: We will have to do something different, like add directories (including parent) into media pages, and then navigate by reloading.
-/*    @Override
-    public MediaSet getSubMediaSet(int index) {
-    	ArrayList<File> list = new ArrayList<File>();
-    	for (int i=0; i< mFileList.length; i++){
-    		if (mFileList[i].isDirectory()){
-    			list.add(mFileList[i]);
-    		}
-    	}
-    	if (list.isEmpty()) return null;
-    	Path newPath = Path.fromString(list.get(index).getAbsolutePath());
-    	FilesystemAlbum fsa = new FilesystemAlbum(newPath, mApplication, list.get(index).getAbsolutePath());
-    	return fsa;
-    }
-
-    @Override
-    public int getSubMediaSetCount() {
-    	int items = 0;
-    	for (int i = 0; i < mFileList.length; i++)
-    		if (mFileList[i].isDirectory()) items++;
-    	return items;
-    }
-*/
-
     @Override
     public ArrayList<MediaItem> getMediaItem(int start, int count) {
     	Log.d("FILESYSTEMALBUM","getMediaItem: "+start+", "+count);
@@ -128,13 +108,17 @@ public class FilesystemAlbum extends MediaSet {
     		for (int i = start; i<start+count && i<mFileList.length; i++){
    				Path newPath = Path.fromString(mFileList[i].getAbsolutePath());
        			String mime = MimeTypeMap.getSingleton().getMimeTypeFromExtension(mFileList[i].getAbsolutePath().substring(mFileList[i].getAbsolutePath().lastIndexOf(".")+1).toLowerCase());
-//       			if (mFileList[i].isDirectory()){
-//       				list.add(new UriImage(mApplication, newPath, Uri.parse("file:///data/data/com.android.gallery3d/files/directory.png"), "image/png"));
-//       			} else list.add(new UriImage(mApplication, newPath, Uri.fromFile(mFileList[i]), mime));
        			if (mFileList[i].isDirectory()){
        				newPath = Path.fromString("/data/data/com.android.gallery3d/files/directory.png");
-       				list.add(new FilesystemImage(mApplication, newPath, "image/png", mFileList[i].getAbsolutePath()));
-       			} else list.add(new FilesystemImage(mApplication, newPath, mime, null));
+       				String pathname;
+       				if (currentPath.getParentFile() != null && currentPath.getParentFile().getAbsolutePath().contentEquals(mFileList[i].getAbsolutePath())) pathname="..";
+       				else {
+       					pathname=mFileList[i].getAbsolutePath();
+       					if (pathname.length() > 1)
+       						pathname=pathname.substring(pathname.lastIndexOf("/")+1);
+       				}
+       				list.add(new FilesystemImage(mApplication, newPath, "image/png", mFileList[i].getAbsolutePath(), pathname));
+       			} else list.add(new FilesystemImage(mApplication, newPath, mime, null, null));
     		}
     		return list;
     	} else return null;
