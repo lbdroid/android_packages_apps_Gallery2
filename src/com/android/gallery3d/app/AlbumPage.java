@@ -543,6 +543,13 @@ public class AlbumPage extends ActivityState implements GalleryActionBar.Cluster
     }
     
     private void reInitializeData(MediaSet mset) {
+    	mAlbumView.setModel(null);
+    	if (mAlbumDataAdapter != null) {
+    		mAlbumDataAdapter.pause();
+            mAlbumDataAdapter.setLoadingListener(null);
+            mAlbumDataAdapter = null;
+    	}
+    	
     	mMediaSet = mset;
     	mMediaSetPath = mset.getPath();
         mSelectionManager.setSourceMediaSet(mMediaSet);
