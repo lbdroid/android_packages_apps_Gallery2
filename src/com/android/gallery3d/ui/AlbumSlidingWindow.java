@@ -379,6 +379,7 @@ public class AlbumSlidingWindow implements AlbumDataLoader.DataListener {
             if (bitmap == null) return; // Error or recycled
 
             AlbumEntry entry = mData[mSlotIndex % mData.length];
+            if (entry == null) return; // recycled
             BitmapTexture texture = new BitmapTexture(bitmap);
             texture.setOpaque(false);
             entry.labelTexture = texture;
